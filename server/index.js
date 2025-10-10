@@ -1,3 +1,6 @@
+try { console.log("DB host =>", new URL(process.env.DATABASE_URL).hostname); }
+catch (e) { console.error("DATABASE_URL inválida:", process.env.DATABASE_URL); }
+
 import express from "express";
 import cors from "cors";
 import pkg from "pg";
@@ -55,3 +58,4 @@ const port = process.env.PORT || 3001;
 app.listen(port, () => {
   console.log(`✅ API on :${port}`);
 });
+
