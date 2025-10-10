@@ -6,7 +6,7 @@ import ProductsPage from './pages/ProductsPage';
 import SalesPage from './pages/SalesPage';
 import AccountsPage from './pages/AccountsPage';
 import CategoriesPage from './pages/CategoriesPage';
-import MovementsPage from './src/pages/Movements';
+import MovementsPage from './src/pages/movements';
 import InvestmentsPage from './pages/InvestmentsPage';
 import CreditCardExpensesPage from './src/pages/CreditCardExpenses';
 import AcompanhamentoPage from './pages/AcompanhamentoVendasPage';
