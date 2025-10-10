@@ -1,16 +1,24 @@
-try { console.log("DB host =>", new URL(process.env.DATABASE_URL).hostname); }
-catch (e) { console.error("DATABASE_URL inválida:", process.env.DATABASE_URL); }
-
 import express from "express";
 import cors from "cors";
 import pkg from "pg";
 
 const { Pool } = pkg;
-const app = express();
 
+const app = express();
 app.use(cors());
 app.use(express.json());
 
+// DEBUG: veja exatamente o que a Render está entregando
+const raw = process.env.DATABASE_URL || "";
+console.log("DATABASE_URL RAW =>", JSON.stringify(raw));
+try {
+  const u = new URL(raw.trim());
+  console.log("DB host =>", u.hostname);
+} catch (e) {
+  console.error("DATABASE_URL inválida:", raw);
+}
+
+// Pool de conexão
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
@@ -24,7 +32,7 @@ app.get("/", (_req, res) => {
 // healthcheck para a Render
 app.get("/healthz", (_req, res) => {
   res.status(200).json({ ok: true });
-});https://github.com/brunoasv-commits/Uniboxxx/blob/main/server/index.js
+});
 
 // listar contatos
 app.get("/api/contatos", async (_req, res) => {
@@ -58,5 +66,3 @@ const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`✅ API on :${port}`);
 });
-
-
