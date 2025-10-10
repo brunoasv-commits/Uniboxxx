@@ -20,10 +20,8 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, '.'),
       },
     },
-
-    // 👇 adiciona sourcemap pra enxergar os arquivos originais no DevTools
-    build: {
-      sourcemap: true,
-    },
+    // 👇 habilita sourcemaps no JS e no CSS
+    build: { sourcemap: true },
+    css: { devSourcemap: true },
   };
 });
