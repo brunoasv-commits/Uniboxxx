@@ -10,7 +10,7 @@ import { CriticalCards } from './components/CriticalCards';
 import { FlowsAndRecents } from './components/FlowsAndRecents';
 import { AlertsPanel, Alert } from './components/AlertsPanel';
 import SaleFormModal from '../../components/SaleFormModal';
-import NewMovementModal from '../../src/pages/Movements/NewMovementModal';
+import NewMovementModal from '../../src/pages/movements/NewMovementModal';
 import ProductFormModal from '../../components/ProductFormModal';
 import ContactFormModal from '../../components/ContactFormModal';
 import { Movement, MovementKind, MovementStatus, ProductStockType, SaleTrackingStatus, AccountType, ID, Product } from '../../types';
