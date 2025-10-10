@@ -12,7 +12,7 @@ import { formatBRL } from '../utils/money';
 import AccountCard from '../components/AccountCard';
 import { List, Grid3X3, Copy, Edit, Trash2 } from "lucide-react";
 import Button from '../components/ui/Button';
-import NewMovementModal from '../src/pages/Movements/NewMovementModal';
+import NewMovementModal from '../src/pages/movements/NewMovementModal';
 import { Page } from '../App';
 
 const accountTypeColors: Record<AccountType, string> = {
