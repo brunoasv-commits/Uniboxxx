@@ -37,12 +37,15 @@ function paginacao(query) {
 // ===== HEALTH =====
 app.get("/healthz", (_req, res) => res.status(200).json({ ok: true }));
 
-// ===== CONTATOS / CONTACTS =====
-// Rotas em PT já existentes (usam tabela 'contatos')
-app.get("/api/contatos", async (_req, res) => {
+// ===== CONTACTS (versão correta - tabela real) =====
+
+// GET /api/contacts  → lista contatos
+app.get("/api/contacts", async (req, res) => {
   try {
     const { rows } = await pool.query(
-      "SELECT id, nome, email, telefone, created_at FROM contatos ORDER BY id DESC"
+      `SELECT id, user_id AS "userId", name, type, email, phone, created_at AS "createdAt"
+       FROM contacts
+       ORDER BY created_at DESC`
     );
     res.json(rows);
   } catch (e) {
@@ -51,50 +54,70 @@ app.get("/api/contatos", async (_req, res) => {
   }
 });
 
-app.post("/api/contatos", async (req, res) => {
-  try {
-    const { nome, email, telefone } = req.body ?? {};
-    const { rows } = await pool.query(
-      "INSERT INTO contatos (nome, email, telefone) VALUES ($1, $2, $3) RETURNING id, nome, email, telefone, created_at",
-      [nome, email, telefone]
-    );
-    res.status(201).json(rows[0]);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "db_error", detail: String(e) });
-  }
-});
-
-// Rotas em EN como “alias” (mesmos dados, mas com chaves name/phone)
-app.get("/api/contacts", async (_req, res) => {
-  try {
-    const { rows } = await pool.query(
-      `SELECT id, nome AS name, email, telefone AS phone, created_at
-         FROM contatos
-        ORDER BY id DESC`
-    );
-    res.json(rows);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "db_error", detail: String(e) });
-  }
-});
-
+// POST /api/contacts  → cria novo contato
 app.post("/api/contacts", async (req, res) => {
   try {
-    const { name, email, phone } = req.body ?? {};
+    const { userId, name, type, email = null, phone = null } = req.body || {};
+
+    // valida campos obrigatórios
+    if (!userId || !name || !type) {
+      return res.status(400).json({
+        error: "missing_fields",
+        detail: "Campos obrigatórios: userId, name, type",
+      });
+    }
+
     const { rows } = await pool.query(
-      `INSERT INTO contatos (nome, email, telefone)
-       VALUES ($1,$2,$3)
-       RETURNING id, nome AS name, email, telefone AS phone, created_at`,
-      [name, email, phone]
+      `INSERT INTO contacts (user_id, name, type, email, phone)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, user_id AS "userId", name, type, email, phone, created_at AS "createdAt"`,
+      [userId, name, type, email, phone]
     );
+
     res.status(201).json(rows[0]);
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "db_error", detail: String(e) });
   }
 });
+
+// PUT /api/contacts/:id  → atualiza parcialmente um contato
+app.put("/api/contacts/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { name, type, email, phone } = req.body || {};
+
+    const { rows } = await pool.query(
+      `UPDATE contacts
+         SET name = COALESCE($2, name),
+             type = COALESCE($3, type),
+             email = COALESCE($4, email),
+             phone = COALESCE($5, phone)
+       WHERE id = $1
+       RETURNING id, user_id AS "userId", name, type, email, phone, created_at AS "createdAt"`,
+      [id, name, type, email, phone]
+    );
+
+    if (!rows.length) return res.sendStatus(404);
+    res.json(rows[0]);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "db_error", detail: String(e) });
+  }
+});
+
+// DELETE /api/contacts/:id  → remove contato
+app.delete("/api/contacts/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    await pool.query("DELETE FROM contacts WHERE id=$1", [id]);
+    res.sendStatus(204);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "db_error", detail: String(e) });
+  }
+});
+
 // ===== STATE (popular DataContext no front) =====
 app.get("/api/state", async (_req, res) => {
   try {
@@ -760,4 +783,5 @@ app.use((err, _req, res, _next) => {
 // ===== START =====
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`✅ API on :${port}`));
+
 
