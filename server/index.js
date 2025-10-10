@@ -1,40 +1,25 @@
 import express from "express";
 import cors from "cors";
 import pkg from "pg";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const { Pool } = pkg;
-
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
-// DEBUG: veja exatamente o que a Render está entregando
-const raw = process.env.DATABASE_URL || "";
-console.log("DATABASE_URL RAW =>", JSON.stringify(raw));
-try {
-  const u = new URL(raw.trim());
-  console.log("DB host =>", u.hostname);
-} catch (e) {
-  console.error("DATABASE_URL inválida:", raw);
-}
-
-// Pool de conexão
+// ====== DB ======
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
 
-// ping raiz (para ver algo no navegador)
-app.get("/", (_req, res) => {
-  res.send("Uniboxxx API is up ✅");
-});
+// ====== HEALTH ======
+app.get("/healthz", (_req, res) => res.status(200).json({ ok: true }));
 
-// healthcheck para a Render
-app.get("/healthz", (_req, res) => {
-  res.status(200).json({ ok: true });
-});
-
-// listar contatos
+// ====== SUAS ROTAS DE API ======
 app.get("/api/contatos", async (_req, res) => {
   try {
     const { rows } = await pool.query(
@@ -47,7 +32,6 @@ app.get("/api/contatos", async (_req, res) => {
   }
 });
 
-// criar contato
 app.post("/api/contatos", async (req, res) => {
   try {
     const { nome, email, telefone } = req.body ?? {};
@@ -62,7 +46,26 @@ app.post("/api/contatos", async (req, res) => {
   }
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`✅ API on :${port}`);
+// ====== FRONTEND ESTÁTICO ======
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// SEU build do front (gerado por npm run build) fica na raiz como /dist
+const distPath = path.join(__dirname, "..", "dist");
+
+// 1) arquivos estáticos (css, js, imgs)
+app.use(express.static(distPath));
+
+// 2) rota raiz -> carrega o app
+app.get("/", (_req, res) => {
+  res.sendFile(path.join(distPath, "index.html"));
 });
+
+// 3) fallback SPA: qualquer rota que NÃO comece com /api cai no app
+app.get(/^\/(?!api).*/, (_req, res) => {
+  res.sendFile(path.join(distPath, "index.html"));
+});
+
+// ====== START ======
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log(`✅ API on :${port}`));
