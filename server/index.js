@@ -12,7 +12,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// log simples de requisições
+// log simples de requisições (útil no Render)
 app.use((req, _res, next) => {
   console.log(`[REQ] ${req.method} ${req.url}`);
   next();
@@ -64,7 +64,7 @@ app.post("/api/contatos", async (req, res) => {
   }
 });
 
-// ===== STATE (para popular DataContext no front) =====
+// ===== STATE (popular DataContext no front) =====
 app.get("/api/state", async (_req, res) => {
   try {
     const client = await pool.connect();
@@ -78,21 +78,23 @@ app.get("/api/state", async (_req, res) => {
       const { rows: contacts } = await client.query(
         'SELECT id, nome AS name, email, telefone FROM contatos ORDER BY id'
       );
+
+      // >>> Ajustado: removido m.fees <<<
       const { rows: movements } = await client.query(`
         SELECT
           m.id, m.description, m.kind, m.status,
           to_char(m.due_date, 'YYYY-MM-DD') AS "dueDate",
           CASE WHEN m.paid_date IS NOT NULL THEN to_char(m.paid_date, 'YYYY-MM-DD') END AS "paidDate",
-          m.amount_net AS "amountNet",
+          m.amount_net  AS "amountNet",
           m.amount_gross AS "amountGross",
-          m.fees,
-          m.account_id AS "accountId",
+          m.account_id  AS "accountId",
           m.destination_account_id AS "destinationAccountId",
           m.category_id AS "categoryId",
-          m.contact_id AS "contactId"
+          m.contact_id  AS "contactId"
         FROM movements m
         ORDER BY m.id DESC
       `);
+
       res.json({ accounts, categories, contacts, movements });
     } finally {
       client.release();
@@ -143,19 +145,19 @@ app.get("/api/movements", async (req, res) => {
 
     const { limit, offset } = paginacao({ page, pageSize });
 
+    // >>> Ajustado: removido m.fees <<<
     const { rows: items } = await pool.query(
       `
       SELECT
         m.id, m.description, m.kind, m.status,
         to_char(m.due_date, 'YYYY-MM-DD') AS "dueDate",
         CASE WHEN m.paid_date IS NOT NULL THEN to_char(m.paid_date, 'YYYY-MM-DD') END AS "paidDate",
-        m.amount_net AS "amountNet",
+        m.amount_net  AS "amountNet",
         m.amount_gross AS "amountGross",
-        m.fees,
-        m.account_id AS "accountId",
+        m.account_id  AS "accountId",
         m.destination_account_id AS "destinationAccountId",
         m.category_id AS "categoryId",
-        m.contact_id AS "contactId"
+        m.contact_id  AS "contactId"
       FROM movements m
       ${whereSql}
       ORDER BY m.due_date DESC, m.id DESC
@@ -530,7 +532,7 @@ app.delete("/api/investments/:id", async (req, res) => {
   }
 });
 
-// ===== COMPANY PROFILE (1 registro) =====
+// ===== COMPANY PROFILE =====
 app.get("/api/company-profile", async (_req, res) => {
   try {
     const { rows } = await pool.query(
