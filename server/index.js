@@ -37,7 +37,8 @@ function paginacao(query) {
 // ===== HEALTH =====
 app.get("/healthz", (_req, res) => res.status(200).json({ ok: true }));
 
-// ===== CONTATOS =====
+// ===== CONTATOS / CONTACTS =====
+// Rotas em PT já existentes (usam tabela 'contatos')
 app.get("/api/contatos", async (_req, res) => {
   try {
     const { rows } = await pool.query(
@@ -64,6 +65,36 @@ app.post("/api/contatos", async (req, res) => {
   }
 });
 
+// Rotas em EN como “alias” (mesmos dados, mas com chaves name/phone)
+app.get("/api/contacts", async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, nome AS name, email, telefone AS phone, created_at
+         FROM contatos
+        ORDER BY id DESC`
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "db_error", detail: String(e) });
+  }
+});
+
+app.post("/api/contacts", async (req, res) => {
+  try {
+    const { name, email, phone } = req.body ?? {};
+    const { rows } = await pool.query(
+      `INSERT INTO contatos (nome, email, telefone)
+       VALUES ($1,$2,$3)
+       RETURNING id, nome AS name, email, telefone AS phone, created_at`,
+      [name, email, phone]
+    );
+    res.status(201).json(rows[0]);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "db_error", detail: String(e) });
+  }
+});
 // ===== STATE (popular DataContext no front) =====
 app.get("/api/state", async (_req, res) => {
   try {
@@ -729,3 +760,4 @@ app.use((err, _req, res, _next) => {
 // ===== START =====
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`✅ API on :${port}`));
+
