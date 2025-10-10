@@ -1,71 +1,39 @@
-import express from "express";
-import cors from "cors";
-import pkg from "pg";
+// ====== FRONTEND ESTÁTICO ======
 import path from "path";
 import { fileURLToPath } from "url";
 
-const { Pool } = pkg;
-const app = express();
-
-app.use(cors());
-app.use(express.json());
-
-// ====== DB ======
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
-
-// ====== HEALTH ======
-app.get("/healthz", (_req, res) => res.status(200).json({ ok: true }));
-
-// ====== SUAS ROTAS DE API ======
-app.get("/api/contatos", async (_req, res) => {
-  try {
-    const { rows } = await pool.query(
-      "SELECT id, nome, email, telefone, created_at FROM contatos ORDER BY id DESC"
-    );
-    res.json(rows);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "db_error", detail: String(e) });
-  }
-});
-
-app.post("/api/contatos", async (req, res) => {
-  try {
-    const { nome, email, telefone } = req.body ?? {};
-    const { rows } = await pool.query(
-      "INSERT INTO contatos (nome, email, telefone) VALUES ($1, $2, $3) RETURNING id, nome, email, telefone, created_at",
-      [nome, email, telefone]
-    );
-    res.status(201).json(rows[0]);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "db_error", detail: String(e) });
-  }
-});
-
-// ====== FRONTEND ESTÁTICO ======
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// SEU build do front (gerado por npm run build) fica na raiz como /dist
+// /opt/render/project/src/server  ->  dist fica em  /opt/render/project/src/dist
 const distPath = path.join(__dirname, "..", "dist");
+console.log(">> distPath:", distPath);
 
-// 1) arquivos estáticos (css, js, imgs)
+// 1) servir arquivos estáticos do build
 app.use(express.static(distPath));
 
-// 2) rota raiz -> carrega o app
+// 2) rota raiz -> index.html com try/catch pra logar qualquer erro
 app.get("/", (_req, res) => {
-  res.sendFile(path.join(distPath, "index.html"));
+  try {
+    res.sendFile(path.join(distPath, "index.html"));
+  } catch (err) {
+    console.error("Erro ao enviar index.html:", err);
+    res.status(500).send("Erro ao carregar a aplicação");
+  }
 });
 
-// 3) fallback SPA: qualquer rota que NÃO comece com /api cai no app
-app.get(/^\/(?!api).*/, (_req, res) => {
-  res.sendFile(path.join(distPath, "index.html"));
+// 3) SPA fallback: qualquer rota que NÃO comece com /api ou /healthz cai no app
+app.get(/^\/(?!api|healthz).*/, (_req, res) => {
+  try {
+    res.sendFile(path.join(distPath, "index.html"));
+  } catch (err) {
+    console.error("Erro no fallback SPA:", err);
+    res.status(500).send("Erro ao carregar a aplicação");
+  }
 });
 
-// ====== START ======
-const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`✅ API on :${port}`));
+// 4) (opcional) capturador de erros gerais pra não derrubar o processo
+app.use((err, _req, res, _next) => {
+  console.error("Erro não tratado:", err);
+  res.status(500).send("Erro interno");
+});
